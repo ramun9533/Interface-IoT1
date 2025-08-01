@@ -2,30 +2,42 @@ document.addEventListener('DOMContentLoaded', function() {
   // Elementos de la interfaz
   const statusIndicator = document.getElementById('status-indicator');
   const statusText = document.getElementById('status');
-  const takeoffLandBtn = document.getElementById('takeoff-land');
-  const emergencyBtn = document.getElementById('emergency');
-  const photoBtn = document.getElementById('photo');
-  const videoBtn = document.getElementById('video');
-  const returnHomeBtn = document.getElementById('return-home');
   const batteryDisplay = document.getElementById('battery');
-  const altitudeDisplay = document.getElementById('altitude');
+  const speedDisplay = document.getElementById('speed');
   const signalDisplay = document.getElementById('signal');
-  const flightTimeDisplay = document.getElementById('flight-time');
+  const operationTimeDisplay = document.getElementById('operation-time');
+  const gripperHeightDisplay = document.getElementById('gripper-height');
+  const gripperApertureDisplay = document.getElementById('gripper-aperture');
+
+  // Botones de dirección
+  const forwardBtn = document.getElementById('forward');
+  const backwardBtn = document.getElementById('backward');
+  const leftBtn = document.getElementById('left');
+  const rightBtn = document.getElementById('right');
+  const stopBtn = document.getElementById('stop');
+
+  // Botones de la pinza
+  const gripperUpBtn = document.getElementById('gripper-up');
+  const gripperDownBtn = document.getElementById('gripper-down');
+  const gripperOpenBtn = document.getElementById('gripper-open');
+  const gripperCloseBtn = document.getElementById('gripper-close');
 
   // Variables de estado
   let isConnected = false;
-  let isFlying = false;
-  let flightStartTime = null;
-  let flightInterval = null;
-  let videoRecording = false;
+  let currentSpeed = 0;
+  let currentDirection = 'stop';
+  let gripperHeight = 0; // 0-100%
+  let gripperAperture = 0; // 0-100%
+  let operationStartTime = null;
+  let operationInterval = null;
 
-  // Simular conexión (en una aplicación real, esto sería conectar con el dron)
+  // Simular conexión
   setTimeout(() => {
-    connectToDrone();
+    connectToVehicle();
   }, 2000);
 
-  // Función para conectar con el dron
-  function connectToDrone() {
+  // Función para conectar con el vehículo
+  function connectToVehicle() {
     statusText.textContent = "Conectando...";
     statusIndicator.className = "status-indicator connecting";
 
@@ -35,102 +47,83 @@ document.addEventListener('DOMContentLoaded', function() {
       statusText.textContent = "Conectado";
       statusIndicator.className = "status-indicator connected";
       updateBattery(85); // Valor inicial de batería
+      startOperationTimer();
     }, 3000);
   }
 
-  // Control de joysticks
-  setupJoystick('joystick-left', (x, y) => {
-    // Joystick izquierdo: control de altura y rotación
-    console.log(`Joystick izquierdo: X=${x.toFixed(2)}, Y=${y.toFixed(2)}`);
-    // Enviar comandos al dron (simulado)
-    updateAltitude(Math.round(-y * 10)); // Rango de -10 a 10 metros
-  });
-
-  setupJoystick('joystick-right', (x, y) => {
-    // Joystick derecho: control de movimiento horizontal
-    console.log(`Joystick derecho: X=${x.toFixed(2)}, Y=${y.toFixed(2)}`);
-    // Enviar comandos al dron (simulado)
-  });
-
-  // Botón de despegue/aterrizaje
-  takeoffLandBtn.addEventListener('click', function() {
+  // Control de dirección
+  function setDirection(direction) {
     if (!isConnected) return;
 
-    if (!isFlying) {
-      // Despegar
-      isFlying = true;
-      takeoffLandBtn.innerHTML = '<i class="fas fa-landing"></i> Aterrizar';
-      takeoffLandBtn.classList.add('btn-warning');
-      takeoffLandBtn.classList.remove('btn-primary');
-      startFlightTimer();
-      updateAltitude(1); // Altura inicial después del despegue
-    } else {
-      // Aterrizar
-      isFlying = false;
-      takeoffLandBtn.innerHTML = '<i class="fas fa-rocket"></i> Despegar';
-      takeoffLandBtn.classList.add('btn-primary');
-      takeoffLandBtn.classList.remove('btn-warning');
-      stopFlightTimer();
-      updateAltitude(0); // Altura después de aterrizar
+    currentDirection = direction;
+
+    // Actualizar interfaz
+    [forwardBtn, backwardBtn, leftBtn, rightBtn, stopBtn].forEach(btn => {
+      btn.style.opacity = '1';
+    });
+
+    switch(direction) {
+      case 'forward':
+        forwardBtn.style.opacity = '0.6';
+        currentSpeed = 50;
+        break;
+      case 'backward':
+        backwardBtn.style.opacity = '0.6';
+        currentSpeed = -30;
+        break;
+      case 'left':
+        leftBtn.style.opacity = '0.6';
+        break;
+      case 'right':
+        rightBtn.style.opacity = '0.6';
+        break;
+      case 'stop':
+        stopBtn.style.opacity = '0.6';
+        currentSpeed = 0;
+        break;
     }
-  });
 
-  // Botón de emergencia
-  emergencyBtn.addEventListener('click', function() {
+    updateSpeedDisplay();
+    console.log(`Dirección: ${direction}, Velocidad: ${currentSpeed}%`);
+  }
+
+  // Control de la pinza
+  function moveGripper(direction) {
     if (!isConnected) return;
 
-    // Detener motores inmediatamente
-    isFlying = false;
-    takeoffLandBtn.innerHTML = '<i class="fas fa-rocket"></i> Despegar';
-    takeoffLandBtn.classList.add('btn-primary');
-    takeoffLandBtn.classList.remove('btn-warning');
-    stopFlightTimer();
-    updateAltitude(0);
+    const step = 10; // Incremento/decremento por paso
 
-    alert("¡EMERGENCIA! Motores detenidos.");
-  });
-
-  // Botón de foto
-  photoBtn.addEventListener('click', function() {
-    if (!isConnected) return;
-    alert("Foto tomada!");
-  });
-
-  // Botón de video
-  videoBtn.addEventListener('click', function() {
-    if (!isConnected) return;
-
-    videoRecording = !videoRecording;
-
-    if (videoRecording) {
-      videoBtn.innerHTML = '<i class="fas fa-stop"></i> Detener';
-      videoBtn.classList.add('btn-danger');
-      videoBtn.classList.remove('btn-secondary');
-    } else {
-      videoBtn.innerHTML = '<i class="fas fa-video"></i> Video';
-      videoBtn.classList.add('btn-secondary');
-      videoBtn.classList.remove('btn-danger');
+    switch(direction) {
+      case 'up':
+        gripperHeight = Math.min(gripperHeight + step, 100);
+        break;
+      case 'down':
+        gripperHeight = Math.max(gripperHeight - step, 0);
+        break;
+      case 'open':
+        gripperAperture = Math.min(gripperAperture + step, 100);
+        break;
+      case 'close':
+        gripperAperture = Math.max(gripperAperture - step, 0);
+        break;
     }
-  });
 
-  // Botón de volver a casa
-  returnHomeBtn.addEventListener('click', function() {
-    if (!isConnected || !isFlying) return;
+    updateGripperDisplay();
+    console.log(`Pinza - Altura: ${gripperHeight}%, Apertura: ${gripperAperture}%`);
+  }
 
-    alert("El dron está regresando al punto de despegue...");
-    // Simular regreso a casa
-    setTimeout(() => {
-      isFlying = false;
-      takeoffLandBtn.innerHTML = '<i class="fas fa-rocket"></i> Despegar';
-      takeoffLandBtn.classList.add('btn-primary');
-      takeoffLandBtn.classList.remove('btn-warning');
-      stopFlightTimer();
-      updateAltitude(0);
-      alert("El dron ha llegado al punto de despegue.");
-    }, 5000);
-  });
+  // Actualizar displays
+  function updateSpeedDisplay() {
+    speedDisplay.textContent = `${Math.abs(currentSpeed)}%`;
+    speedDisplay.style.color = currentSpeed === 0 ? 'var(--dark-color)' :
+    currentSpeed > 0 ? 'var(--primary-color)' : 'var(--danger-color)';
+  }
 
-  // Funciones de ayuda
+  function updateGripperDisplay() {
+    gripperHeightDisplay.textContent = `${gripperHeight}%`;
+    gripperApertureDisplay.textContent = `${gripperAperture}%`;
+  }
+
   function updateBattery(percent) {
     batteryDisplay.textContent = `${percent}%`;
 
@@ -138,133 +131,64 @@ document.addEventListener('DOMContentLoaded', function() {
     if (percent < 20) {
       batteryDisplay.style.color = 'var(--danger-color)';
     } else if (percent < 40) {
-      batteryDisplay.style.color = 'var(--connecting-color)';
+      batteryDisplay.style.color = 'var(--warning-color)';
     } else {
       batteryDisplay.style.color = 'var(--connected-color)';
     }
 
-    // Simular descarga de batería durante el vuelo
-    if (isFlying) {
-      const dischargeRate = 0.5; // % por segundo
-      const nextPercent = Math.max(0, percent - dischargeRate);
-      setTimeout(() => updateBattery(nextPercent), 1000);
-    }
+    // Simular descarga de batería durante la operación
+    const dischargeRate = 0.1; // % por segundo
+    const nextPercent = Math.max(0, percent - dischargeRate);
+    setTimeout(() => updateBattery(nextPercent), 1000);
   }
 
-  function updateAltitude(meters) {
-    altitudeDisplay.textContent = `${meters} m`;
+  function startOperationTimer() {
+    operationStartTime = new Date();
+    operationInterval = setInterval(updateOperationTime, 1000);
   }
 
-  function startFlightTimer() {
-    flightStartTime = new Date();
-    flightInterval = setInterval(updateFlightTime, 1000);
-  }
-
-  function stopFlightTimer() {
-    clearInterval(flightInterval);
-  }
-
-  function updateFlightTime() {
+  function updateOperationTime() {
     const now = new Date();
-    const diff = Math.floor((now - flightStartTime) / 1000); // diferencia en segundos
+    const diff = Math.floor((now - operationStartTime) / 1000); // diferencia en segundos
     const minutes = Math.floor(diff / 60);
     const seconds = diff % 60;
-    flightTimeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    operationTimeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  // Configuración de joysticks táctiles
-  function setupJoystick(joystickId, callback) {
-    const joystick = document.getElementById(joystickId);
-    const joystickHead = joystick.querySelector('.joystick-head');
-    const joystickRect = joystick.getBoundingClientRect();
-    const centerX = joystickRect.width / 2;
-    const centerY = joystickRect.height / 2;
-    const radius = joystickRect.width / 2;
+  // Event listeners para los botones de dirección
+  forwardBtn.addEventListener('mousedown', () => setDirection('forward'));
+  forwardBtn.addEventListener('touchstart', () => setDirection('forward'));
 
-    let touchId = null;
+  backwardBtn.addEventListener('mousedown', () => setDirection('backward'));
+  backwardBtn.addEventListener('touchstart', () => setDirection('backward'));
 
-    function moveJoystick(clientX, clientY) {
-      const rect = joystick.getBoundingClientRect();
-      const x = clientX - rect.left - centerX;
-      const y = clientY - rect.top - centerY;
+  leftBtn.addEventListener('mousedown', () => setDirection('left'));
+  leftBtn.addEventListener('touchstart', () => setDirection('left'));
 
-      // Calcular distancia desde el centro
-      const distance = Math.min(Math.sqrt(x*x + y*y), radius);
-      const angle = Math.atan2(y, x);
+  rightBtn.addEventListener('mousedown', () => setDirection('right'));
+  rightBtn.addEventListener('touchstart', () => setDirection('right'));
 
-      // Posición limitada al círculo del joystick
-      const boundedX = distance * Math.cos(angle);
-      const boundedY = distance * Math.sin(angle);
+  stopBtn.addEventListener('click', () => setDirection('stop'));
 
-      // Mover el cabezal del joystick
-      joystickHead.style.transform = `translate(calc(-50% + ${boundedX}px), calc(-50% + ${boundedY}px))`;
+  // Event listeners para soltar los botones de dirección
+  [forwardBtn, backwardBtn, leftBtn, rightBtn].forEach(btn => {
+    btn.addEventListener('mouseup', () => setDirection('stop'));
+    btn.addEventListener('mouseleave', () => setDirection('stop'));
+    btn.addEventListener('touchend', () => setDirection('stop'));
+  });
 
-      // Normalizar valores entre -1 y 1
-      const normalizedX = boundedX / radius;
-      const normalizedY = boundedY / radius;
+  // Event listeners para los controles de la pinza
+  gripperUpBtn.addEventListener('click', () => moveGripper('up'));
+  gripperDownBtn.addEventListener('click', () => moveGripper('down'));
+  gripperOpenBtn.addEventListener('click', () => moveGripper('open'));
+  gripperCloseBtn.addEventListener('click', () => moveGripper('close'));
 
-      callback(normalizedX, normalizedY);
-    }
+  // Para móviles: evitar zoom con doble toque
+  document.addEventListener('dblclick', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 
-    function handleStart(e) {
-      e.preventDefault();
-      if (isConnected) {
-        if (e.type === 'mousedown') {
-          touchId = 'mouse';
-          moveJoystick(e.clientX, e.clientY);
-        } else if (e.type === 'touchstart' && e.touches.length === 1) {
-          touchId = e.touches[0].identifier;
-          moveJoystick(e.touches[0].clientX, e.touches[0].clientY);
-        }
-      }
-    }
-
-    function handleMove(e) {
-      e.preventDefault();
-      if (!touchId) return;
-
-      if (e.type === 'mousemove' && touchId === 'mouse') {
-        moveJoystick(e.clientX, e.clientY);
-      } else if (e.type === 'touchmove') {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === touchId) {
-            moveJoystick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
-            break;
-          }
-        }
-      }
-    }
-
-    function handleEnd(e) {
-      e.preventDefault();
-      let shouldReset = false;
-
-      if (e.type === 'mouseup' && touchId === 'mouse') {
-        shouldReset = true;
-      } else if (e.type === 'touchend') {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === touchId) {
-            shouldReset = true;
-            break;
-          }
-        }
-      }
-
-      if (shouldReset) {
-        touchId = null;
-        joystickHead.style.transform = 'translate(-50%, -50%)';
-        callback(0, 0); // Resetear valores
-      }
-    }
-
-    // Eventos para mouse
-    joystick.addEventListener('mousedown', handleStart);
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-
-    // Eventos para pantalla táctil
-    joystick.addEventListener('touchstart', handleStart);
-    document.addEventListener('touchmove', handleMove, { passive: false });
-    document.addEventListener('touchend', handleEnd);
-  }
+  // Inicializar displays
+  setDirection('stop');
+  updateGripperDisplay();
 });
