@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Control Remoto de Dron</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Control de Dron</h1>
+            <div class="connection-status">
+                <span id="status">Desconectado</span>
+                <div class="status-indicator" id="status-indicator"></div>
+            </div>
+        </header>
+
+        <div class="video-feed">
+            <div class="video-placeholder">
+                <i class="fas fa-video"></i>
+                <p>Transmisión en vivo</p>
+            </div>
+        </div>
+
+        <div class="controls-container">
+            <div class="joystick-container">
+                <div class="joystick-left" id="joystick-left">
+                    <div class="joystick-head"></div>
+                </div>
+                <div class="joystick-right" id="joystick-right">
+                    <div class="joystick-head"></div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="takeoff-land">
+                    <i class="fas fa-rocket"></i> Despegar
+                </button>
+                <button class="btn btn-danger" id="emergency">
+                    <i class="fas fa-exclamation-triangle"></i> Emergencia
+                </button>
+            </div>
+
+            <div class="additional-controls">
+                <button class="btn btn-secondary" id="photo">
+                    <i class="fas fa-camera"></i> Foto
+                </button>
+                <button class="btn btn-secondary" id="video">
+                    <i class="fas fa-video"></i> Video
+                </button>
+                <button class="btn btn-secondary" id="return-home">
+                    <i class="fas fa-home"></i> Volver
+                </button>
+            </div>
+        </div>
+
+        <div class="telemetry">
+            <div class="telemetry-item">
+                <i class="fas fa-battery-three-quarters"></i>
+                <span id="battery">85%</span>
+            </div>
+            <div class="telemetry-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span id="altitude">0 m</span>
+            </div>
+            <div class="telemetry-item">
+                <i class="fas fa-satellite-dish"></i>
+                <span id="signal">Fuerte</span>
+            </div>
+            <div class="telemetry-item">
+                <i class="fas fa-clock"></i>
+                <span id="flight-time">00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
